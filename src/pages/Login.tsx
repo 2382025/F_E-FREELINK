@@ -20,7 +20,7 @@ export const Login = () => {
 
   const handleLogin = async (data: LoginInput) => {
     try {
-      const res = await axios.post<{ access_token: string }>(
+      const res = await axios.post<{ access_token: string; user: { id: number; username: string; email: string } }>(
         "/api/auth/login",
         {
           email: data.email,
@@ -29,7 +29,7 @@ export const Login = () => {
       );
 
       if (res.data) {
-        login(res.data.access_token);
+        login(res.data.access_token, res.data.user);
         navigate("/");
       } else {
         alert("Email or password is wrong");
@@ -74,40 +74,38 @@ export const Login = () => {
           <h2 className="text-2xl font-bold text-center mb-6">Log into your account</h2>
           
           <form onSubmit={handleSubmit((data) => mutate(data))}>
-          <div className="mb-4">
-  <label className="block text-sm font-medium mb-1">Email</label>
-  <input 
-    type="email" 
-    className="w-full p-2 border border-gray-300 rounded"
-    {...register("email", { required: true })}
-    autoComplete="username"
-  />
-  {errors.email && (
-    <p className="text-red-500 text-xs mt-1">Email is required.</p>
-  )}
-</div>
-
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input 
+                type="email" 
+                className="w-full p-2 border border-gray-300 rounded"
+                {...register("email", { required: true })}
+                autoComplete="username"
+              />
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1">Email is required.</p>
+              )}
+            </div>
             
             <div className="mb-6">
-  <label className="block text-sm font-medium mb-1">Password</label>
-  <input 
-    type="password" 
-    className="w-full p-2 border border-gray-300 rounded"
-    {...register("password", { required: true })}
-    autoComplete="current-password"
-  />
-  {errors.password && (
-    <p className="text-red-500 text-xs mt-1">Password is required.</p>
-  )}
-</div>
+              <label className="block text-sm font-medium mb-1">Password</label>
+              <input 
+                type="password" 
+                className="w-full p-2 border border-gray-300 rounded"
+                {...register("password", { required: true })}
+                autoComplete="current-password"
+              />
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1">Password is required.</p>
+              )}
+            </div>
 
-            
-            <button 
-              type="submit" 
-              className="w-full bg-[#1f3354] text-white py-2 rounded-md hover:bg-slate-700 transition-colors"
+            <button
+              type="submit"
+              className="w-full bg-[#1f3354] text-white py-2 rounded hover:bg-[#2a3f6a] transition-colors"
               disabled={isPending}
             >
-              {isPending ? "Signing in..." : "Login"}
+              {isPending ? "Loading..." : "Login"}
             </button>
           </form>
           

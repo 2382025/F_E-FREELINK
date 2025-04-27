@@ -9,11 +9,6 @@ type ClientType = {
   client_name: string;
 };
 
-type ProjectType = {
-  id: number;
-  project_name: string;
-};
-
 // Fetch client list
 const fetchClientList = async (token: string | null) => {
   if (!token) {
@@ -24,86 +19,53 @@ const fetchClientList = async (token: string | null) => {
   });
 };
 
-// Fetch project list
-const fetchProjectList = async (token: string | null) => {
-  if (!token) {
-    throw new Error("No authentication token found");
-  }
-  return await axios.get<ProjectType[]>("/api/project", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-};
-
-// API untuk tambah invoice
-const addInvoice = async (data: { 
-  project_id: number;
+// API untuk tambah project
+const addProject = async (data: { 
+  project_name: string;
   client_id: number;
-  amount: number;
-  payment_status: string;
-  issue_date: string;
+  due_date: string;
+  project_status: string;
 }, token: string | null) => {
   if (!token) {
     throw new Error("No authentication token found");
   }
-  try {
-    console.log('Sending invoice data:', data);
-    const response = await axios.post("/api/invoice", data, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    console.log('Invoice created successfully:', response.data);
-    return response;
-  } catch (error: any) {
-    console.error('Error creating invoice:', error.response?.data || error.message);
-    throw error;
-  }
+  return await axios.post("/api/project", data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
 };
 
-const AddInvoice = () => {
+const AddProject = () => {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const { mutate, isSuccess, isPending, error } = useMutation({
     mutationFn: (data: { 
-      project_id: number;
+      project_name: string;
       client_id: number;
-      amount: number;
-      payment_status: string;
-      issue_date: string;
-    }) => addInvoice(data, getToken()),
-    onError: (error: Error) => {
-      console.error('Mutation error:', error.message);
-    }
+      due_date: string;
+      project_status: string;
+    }) => addProject(data, getToken()),
   });
 
-  // Fetch client and project data
   const { data: clientData, isLoading: clientLoading } = useQuery({
     queryKey: ["clientList"],
     queryFn: () => fetchClientList(getToken()),
   });
 
-  const { data: projectData, isLoading: projectLoading } = useQuery({
-    queryKey: ["projectList"],
-    queryFn: () => fetchProjectList(getToken()),
-  });
-
   const [clients, setClients] = useState<ClientType[]>([]);
-  const [projects, setProjects] = useState<ProjectType[]>([]);
 
   useEffect(() => {
     if (clientData?.data) {
       setClients(clientData.data);
     }
-    if (projectData?.data) {
-      setProjects(projectData.data);
-    }
-  }, [clientData, projectData]);
+  }, [clientData]);
 
   useEffect(() => {
     if (isSuccess) {
-      navigate("/invoices", { replace: true });
+      navigate("/projects", { replace: true });
     }
   }, [isSuccess, navigate]);
 
-  const invoiceStatusOptions = ["Pending", "Paid", "Overdue"];
+  const projectStatusOptions = ["Pending", "In Progress", "Done"];
 
   return (
     <div className="relative">
@@ -134,38 +96,29 @@ const AddInvoice = () => {
           </div>
         </div>
       )}
-
-      <h2 className="text-2xl font-bold mb-6 mt-10">Add Invoice</h2>
+      <h2 className="text-2xl font-bold mb-6 mt-10">Add Project</h2>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           const formData = new FormData(e.target as HTMLFormElement);
           const data = {
-            project_id: parseInt(formData.get("project_id") as string, 10),
+            project_name: formData.get("project_name") as string,
             client_id: parseInt(formData.get("client_id") as string, 10),
-            amount: parseFloat(formData.get("amount") as string),
-            payment_status: formData.get("payment_status") as string,
-            issue_date: formData.get("issue_date") as string,
+            due_date: formData.get("due_date") as string,
+            project_status: formData.get("project_status") as string,
           };
-          console.log('Form data before mutation:', data);
           mutate(data);
         }}
         className="space-y-6"
       >
         <div>
-          <label className="block text-sm font-medium text-gray-700">Project</label>
-          <select
-            name="project_id"
+          <label className="block text-sm font-medium text-gray-700">Project Name</label>
+          <input
+            type="text"
+            name="project_name"
             required
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select Project</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.project_name}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         <div>
@@ -185,26 +138,24 @@ const AddInvoice = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Amount</label>
+          <label className="block text-sm font-medium text-gray-700">Due Date</label>
           <input
-            type="number"
-            name="amount"
+            type="date"
+            name="due_date"
             required
-            min="0"
-            step="0.01"
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Payment Status</label>
+          <label className="block text-sm font-medium text-gray-700">Status</label>
           <select
-            name="payment_status"
+            name="project_status"
             required
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select Status</option>
-            {invoiceStatusOptions.map((status) => (
+            {projectStatusOptions.map((status) => (
               <option key={status} value={status}>
                 {status}
               </option>
@@ -213,21 +164,11 @@ const AddInvoice = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Issue Date</label>
-          <input
-            type="date"
-            name="issue_date"
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <div>
           <button
             type="submit"
             className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            Add Invoice
+            Add Project
           </button>
         </div>
       </form>
@@ -235,4 +176,4 @@ const AddInvoice = () => {
   );
 };
 
-export default AddInvoice;
+export default AddProject;

@@ -1,32 +1,47 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import ProductForm, { ProductFormInput } from "../components/ProductForm";
+import ProjectForm from "../components/ProjectForm";
 import axios from "../utils/AxiosInstance";
-import { fetchProductDetail } from "./ProductDetail";
+import { fetchProjectDetail } from "./ProjectDetail";
+import { useAuth } from "../utils/AuthProvider";
 
-const editProduct = async (data: ProductFormInput, id: string | undefined) => {
-  return await axios.put(`/products/${id}`, data);
+type NewProjectType = {
+  project_name: string;
+  client_id: number;
+  due_date: string;
+  project_status: string;
 };
 
-const EditProduct = () => {
+const editProject = async (data: NewProjectType, id: string | undefined, token: string | null) => {
+  return await axios.put(`/api/project/${id}`, data, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+};
+
+const EditProject = () => {
   const { id } = useParams();
-  const editProductMutation = useMutation({
-    mutationFn: (data: ProductFormInput) => editProduct(data, id)
-  });
-  const getProductDetail = useQuery({
-    queryKey: ["productDetail", id],
-    queryFn: () => fetchProductDetail(id)
-  });
   const navigate = useNavigate();
+  const { getToken } = useAuth();
+
+  const editProjectMutation = useMutation({
+    mutationFn: (data: NewProjectType) => editProject(data, id, getToken()),
+  });
+
+  const getProjectDetail = useQuery({
+    queryKey: ["projectDetail", id],
+    queryFn: () => fetchProjectDetail(id, getToken()),
+  });
+
   useEffect(() => {
-    if (editProductMutation.isSuccess) {
-      navigate("/product", { replace: true });
+    if (editProjectMutation.isSuccess) {
+      navigate("/project", { replace: true });
     }
-  }, [editProductMutation.isSuccess]);
+  }, [editProjectMutation.isSuccess]);
+
   return (
     <div className="relative">
-      {(editProductMutation.isPending || getProductDetail.isFetching) && (
+      {(editProjectMutation.isPending || getProjectDetail.isFetching) && (
         <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="flex items-center bg-white/90 px-6 py-3 rounded-lg shadow-lg">
             <span className="text-2xl mr-4 text-gray-800">Loading...</span>
@@ -53,14 +68,14 @@ const EditProduct = () => {
           </div>
         </div>
       )}
-      <h2 className="text-2xl font-bold mb-6 mt-10">Edit Product</h2>
-      <ProductForm
+      <h2 className="text-2xl font-bold mb-6 mt-10">Edit Project</h2>
+      <ProjectForm
         isEdit={true}
-        mutateFn={editProductMutation.mutate}
-        defaultInputData={getProductDetail.data?.data}
+        mutateFn={editProjectMutation.mutate}
+        defaultInputData={getProjectDetail.data?.data}
       />
     </div>
   );
 };
 
-export default EditProduct;
+export default EditProject;
