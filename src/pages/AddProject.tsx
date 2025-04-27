@@ -37,7 +37,7 @@ const addProject = async (data: {
 const AddProject = () => {
   const { getToken } = useAuth();
   const navigate = useNavigate();
-  const { mutate, isSuccess, isPending, error } = useMutation({
+  const { mutate, isSuccess, isPending } = useMutation({
     mutationFn: (data: { 
       project_name: string;
       client_id: number;
@@ -46,7 +46,7 @@ const AddProject = () => {
     }) => addProject(data, getToken()),
   });
 
-  const { data: clientData, isLoading: clientLoading } = useQuery({
+  const { data: clientData } = useQuery({
     queryKey: ["clientList"],
     queryFn: () => fetchClientList(getToken()),
   });
