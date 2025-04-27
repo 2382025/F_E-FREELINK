@@ -17,10 +17,6 @@ interface ClientDetail {
   };
 }
 
-interface DeletedClient extends ClientDetail {
-  isDeleted: boolean;
-  deletedOn: string;
-}
 
 // Fetch detail client
 export const fetchClientDetail = async (id: string | undefined, token: string | null) => {
