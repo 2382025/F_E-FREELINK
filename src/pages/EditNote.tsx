@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import {useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import NoteForm, { NoteFormInput } from "../components/NoteForm";
 import axios from "../utils/AxiosInstance";
