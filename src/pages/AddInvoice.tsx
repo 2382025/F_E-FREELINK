@@ -61,7 +61,7 @@ const addInvoice = async (data: {
 const AddInvoice = () => {
   const { getToken } = useAuth();
   const navigate = useNavigate();
-  const { mutate, isSuccess, isPending, error } = useMutation({
+  const { mutate, isSuccess, isPending } = useMutation({
     mutationFn: (data: { 
       project_id: number;
       client_id: number;
@@ -75,12 +75,12 @@ const AddInvoice = () => {
   });
 
   // Fetch client and project data
-  const { data: clientData, isLoading: clientLoading } = useQuery({
+  const { data: clientData } = useQuery({
     queryKey: ["clientList"],
     queryFn: () => fetchClientList(getToken()),
   });
 
-  const { data: projectData, isLoading: projectLoading } = useQuery({
+  const { data: projectData } = useQuery({
     queryKey: ["projectList"],
     queryFn: () => fetchProjectList(getToken()),
   });
