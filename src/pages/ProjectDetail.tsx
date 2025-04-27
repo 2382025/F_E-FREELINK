@@ -1,27 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import {useState } from "react";
 import ProjectForm from "../components/ProjectForm";
 import axios from "../utils/AxiosInstance";
 import { useAuth } from "../utils/AuthProvider";
 
-interface ProjectDetailType {
-  id: number;
-  project_name: string;
-  due_date: string;
-  project_status: string;
-  client: {
-    client_name: string;
-    id: number;
-  };
-  created_at: string;
-  updated_at: string;
-}
 
-interface DeletedProject extends ProjectDetailType {
-  isDeleted: boolean;
-  deletedOn: string;
-}
 
 export const fetchProjectDetail = async (id: string | undefined, token: string | null) => {
   return await axios.get(`/api/project/${id}`, {
@@ -41,16 +25,6 @@ const deleteProject = async (id: string | undefined, token: string | null) => {
   });
 };
 
-const ProjectDetailSkeleton = () => {
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-12 space-y-6 animate-pulse">
-      <div className="h-10 bg-gray-300 rounded"></div>
-      <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-      <div className="h-4 bg-gray-300 rounded w-full"></div>
-      <div className="h-4 bg-gray-300 rounded w-5/6"></div>
-    </div>
-  );
-};
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -130,10 +104,10 @@ const ProjectDetail = () => {
         )}
         <DeleteConfirmationModal />
         {isError && (
-          <div className="text-red-500 mb-4">Gagal memuat project. Silakan coba lagi.</div>
+          <div className="text-red-500 mb-4">Error loading project.</div>
         )}
         {!isError && (!projectDetail || !projectDetail.data) && (
-          <div className="text-gray-500 text-center py-8">Data project tidak ditemukan atau masih dimuat.<br/>Silakan cek koneksi atau API.</div>
+          <div className="text-gray-500 text-center py-8">Project Data not Found.<br/>Please check your connection.</div>
         )}
         {!isError && projectDetail && projectDetail.data && (
           <>
@@ -153,12 +127,12 @@ const ProjectDetail = () => {
             </div>
             {updateProjectMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error saat menyimpan: {updateProjectMutation.error?.message || "Unknown error"}
+                Error While Saving: {updateProjectMutation.error?.message || "Unknown error"}
               </div>
             )}
             {deleteProjectMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error saat menghapus: {deleteProjectMutation.error?.message || "Unknown error"}
+                Error While Deleting: {deleteProjectMutation.error?.message || "Unknown error"}
               </div>
             )}
           </>
