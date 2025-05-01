@@ -1,8 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import axios from "../utils/AxiosInstance";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "../utils/AuthProvider";
+import InvoiceForm from "../components/InvoiceForm";
 
 type ClientType = {
   id: number;
@@ -12,6 +13,7 @@ type ClientType = {
 type ProjectType = {
   id: number;
   project_name: string;
+  client_id: number;
 };
 
 // Fetch client list
@@ -29,25 +31,36 @@ const fetchProjectList = async (token: string | null) => {
   if (!token) {
     throw new Error("No authentication token found");
   }
-  return await axios.get<ProjectType[]>("/api/project", {
+  const response = await axios.get<ProjectType[]>("/api/project", {
     headers: { Authorization: `Bearer ${token}` },
   });
+  console.log('Projects fetched:', response.data);
+  return response;
 };
 
 // API untuk tambah invoice
 const addInvoice = async (data: { 
-  project_id: number;
-  client_id: number;
+  projectId: number;
+  clientId: number;
   amount: number;
-  payment_status: string;
-  issue_date: string;
+  status: string;
+  paymentMethod: string;
+  issueDate: string;
 }, token: string | null) => {
   if (!token) {
     throw new Error("No authentication token found");
   }
   try {
-    console.log('Sending invoice data:', data);
-    const response = await axios.post("/api/invoice", data, {
+    const payload = {
+      project_id: Number(data.projectId),
+      client_id: Number(data.clientId),
+      amount: Number(data.amount),
+      payment_status: data.status,
+      payment_method: data.paymentMethod,
+      issue_date: data.issueDate
+    };
+    console.log('Sending invoice data:', payload);
+    const response = await axios.post("/api/invoice", payload, {
       headers: { Authorization: `Bearer ${token}` }
     });
     console.log('Invoice created successfully:', response.data);
@@ -63,11 +76,12 @@ const AddInvoice = () => {
   const navigate = useNavigate();
   const { mutate, isSuccess, isPending } = useMutation({
     mutationFn: (data: { 
-      project_id: number;
-      client_id: number;
+      projectId: number;
+      clientId: number;
       amount: number;
-      payment_status: string;
-      issue_date: string;
+      status: string;
+      paymentMethod: string;
+      issueDate: string;
     }) => addInvoice(data, getToken()),
     onError: (error: Error) => {
       console.error('Mutation error:', error.message);
@@ -85,25 +99,15 @@ const AddInvoice = () => {
     queryFn: () => fetchProjectList(getToken()),
   });
 
-  const [clients, setClients] = useState<ClientType[]>([]);
-  const [projects, setProjects] = useState<ProjectType[]>([]);
-
-  useEffect(() => {
-    if (clientData?.data) {
-      setClients(clientData.data);
-    }
-    if (projectData?.data) {
-      setProjects(projectData.data);
-    }
-  }, [clientData, projectData]);
-
   useEffect(() => {
     if (isSuccess) {
       navigate("/invoices", { replace: true });
     }
   }, [isSuccess, navigate]);
 
-  const invoiceStatusOptions = ["Pending", "Paid", "Overdue"];
+  if (!clientData?.data || !projectData?.data) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="relative">
@@ -136,101 +140,12 @@ const AddInvoice = () => {
       )}
 
       <h2 className="text-2xl font-bold mb-6 mt-10">Add Invoice</h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const formData = new FormData(e.target as HTMLFormElement);
-          const data = {
-            project_id: parseInt(formData.get("project_id") as string, 10),
-            client_id: parseInt(formData.get("client_id") as string, 10),
-            amount: parseFloat(formData.get("amount") as string),
-            payment_status: formData.get("payment_status") as string,
-            issue_date: formData.get("issue_date") as string,
-          };
-          console.log('Form data before mutation:', data);
-          mutate(data);
-        }}
-        className="space-y-6"
-      >
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Project</label>
-          <select
-            name="project_id"
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select Project</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.project_name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Client</label>
-          <select
-            name="client_id"
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select Client</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.client_name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Amount</label>
-          <input
-            type="number"
-            name="amount"
-            required
-            min="0"
-            step="0.01"
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Payment Status</label>
-          <select
-            name="payment_status"
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">Select Status</option>
-            {invoiceStatusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Issue Date</label>
-          <input
-            type="date"
-            name="issue_date"
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <div>
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Add Invoice
-          </button>
-        </div>
-      </form>
+      <InvoiceForm
+        isEdit={false}
+        mutateFn={mutate}
+        projectOptions={projectData.data}
+        clientOptions={clientData.data}
+      />
     </div>
   );
 };
