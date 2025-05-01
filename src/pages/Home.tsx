@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import AxiosInstance from '../utils/AxiosInstance'; // Gunakan AxiosInstance yang sudah dibuat
-import { AxiosError } from 'axios';
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "../utils/AuthProvider";
+import axios from "../utils/AxiosInstance";
 
 interface Project {
   id: number;
@@ -33,72 +33,69 @@ interface Client {
   updated_at: Date;
 }
 
-interface ErrorResponse {
-  message: string;
-}
+const fetchDashboardData = async (token: string | null) => {
+  const [projectsRes, invoicesRes, clientsRes] = await Promise.all([
+    axios.get<Project[]>("/api/project", {
+      headers: { Authorization: `Bearer ${token}` }
+    }),
+    axios.get<Invoice[]>("/api/invoice", {
+      headers: { Authorization: `Bearer ${token}` }
+    }),
+    axios.get<Client[]>("/api/client", {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+  ]);
+
+  return {
+    projects: projectsRes.data,
+    invoices: invoicesRes.data,
+    clients: clientsRes.data
+  };
+};
 
 const Home = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('No authentication token found');
-          return;
-        }
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["dashboardData"],
+    queryFn: () => fetchDashboardData(getToken()),
+    retry: false
+  });
 
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        };
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-blue-600 text-xl mb-2">Loading...</div>
+          <div className="text-gray-500">Please wait while we fetch your data</div>
+        </div>
+      </div>
+    );
+  }
 
-        console.log('Fetching data with token:', token);
+  if (isError) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch data";
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error! </strong>
+          <span className="block sm:inline">{errorMessage}</span>
+          <p className="mt-2 text-sm">
+            Please check:
+            <ul className="list-disc list-inside ml-4">
+              <li>Backend server is running</li>
+              <li>You are logged in with valid credentials</li>
+              <li>Your authentication token is valid</li>
+            </ul>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-        const [projectsRes, invoicesRes, clientsRes] = await Promise.all([
-          AxiosInstance.get<Project[]>('/project', config),
-          AxiosInstance.get<Invoice[]>('/invoice', config),
-          AxiosInstance.get<Client[]>('/client', config),
-        ]);
+  const { projects = [], invoices = [], clients = [] } = data || {};
 
-        setProjects(projectsRes.data);
-        setInvoices(invoicesRes.data);
-        setClients(clientsRes.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        const error = err as AxiosError<ErrorResponse>;
-
-        if (error.response) {
-          console.error('Error response:', {
-            data: error.response.data,
-            status: error.response.status,
-            headers: error.response.headers,
-          });
-          setError(`Error: ${error.response.data?.message || error.response.statusText}`);
-        } else if (error.request) {
-          console.error('No response received:', error.request);
-          setError('No response received from server. Please check if the backend is running.');
-        } else {
-          console.error('Error setting up request:', error.message);
-          setError(`Error: ${error.message}`);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Calculate project statistics dengan pengecekan yang lebih fleksibel
+  // Calculate project statistics
   const projectStats = {
     done: projects.filter(p => 
       p?.project_status?.toUpperCase().includes('DONE') ||
@@ -116,47 +113,17 @@ const Home = () => {
     ).length
   };
 
-  // Calculate invoice statistics dengan pengecekan
+  // Calculate invoice statistics
   const invoiceStats = {
     paid: invoices.filter(i => i?.payment_status?.toUpperCase() === 'PAID').length,
     unpaid: invoices.filter(i => i?.payment_status?.toUpperCase() === 'UNPAID').length,
     overdue: invoices.filter(i => i?.payment_status?.toUpperCase() === 'OVERDUE').length
   };
 
-  // Calculate total income dengan pengecekan
+  // Calculate total income
   const totalIncome = invoices
     .filter(i => i?.payment_status?.toUpperCase() === 'PAID')
     .reduce((sum, invoice) => sum + (Number(invoice?.amount) || 0), 0);
-
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-blue-600 text-xl mb-2">Loading...</div>
-          <div className="text-gray-500">Please wait while we fetch your data</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Error! </strong>
-          <span className="block sm:inline">{error}</span>
-          <p className="mt-2 text-sm">
-            Please check:
-            <ul className="list-disc list-inside ml-4">
-              <li>Backend server is running on port 3000</li>
-              <li>You are logged in with valid credentials</li>
-              <li>Your authentication token is valid</li>
-            </ul>
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">
@@ -241,7 +208,7 @@ const Home = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span className="text-4xl font-bold">${totalIncome}</span>
+            <span className="text-4xl font-bold">${totalIncome.toLocaleString()}</span>
           </div>
         </div>
       </div>
