@@ -17,7 +17,6 @@ interface ClientDetail {
   };
 }
 
-
 // Fetch detail client
 export const fetchClientDetail = async (id: string | undefined, token: string | null) => {
   return await axios.get(`/api/client/${id}`, {
@@ -72,22 +71,22 @@ const ClientDetail = () => {
     }
   });
 
-  // Modal konfirmasi hapus
+  // Delete confirmation modal
   const DeleteConfirmationModal = () => {
     if (!isDeleteModalOpen) return null;
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 flex items-center justify-center">
         <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-          <h3 className="text-lg font-medium mb-3">Konfirmasi Hapus</h3>
+          <h3 className="text-lg font-medium mb-3">Delete Confirmation</h3>
           <p className="text-gray-600 mb-4">
-            Apakah Anda yakin ingin menghapus client ini? Tindakan ini tidak dapat dibatalkan.
+            Are you sure you want to delete this client? This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setIsDeleteModalOpen(false)}
               className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800"
             >
-              Batal
+              Cancel
             </button>
             <button
               onClick={() => {
@@ -96,7 +95,7 @@ const ClientDetail = () => {
               }}
               className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
             >
-              Hapus
+              Delete
             </button>
           </div>
         </div>
@@ -121,10 +120,10 @@ const ClientDetail = () => {
         )}
         <DeleteConfirmationModal />
         {isError && (
-          <div className="text-red-500 mb-4">Gagal memuat client. Silakan coba lagi.</div>
+          <div className="text-red-500 mb-4">Failed to load client. Please try again.</div>
         )}
         {!isError && (!clientDetail || !clientDetail.data) && (
-          <div className="text-gray-500 text-center py-8">Data client tidak ditemukan atau masih dimuat.<br/>Silakan cek koneksi atau API.</div>
+          <div className="text-gray-500 text-center py-8">Client data not found or still loading.<br/>Please check your connection or API.</div>
         )}
         {!isError && clientDetail && clientDetail.data && (
           <>
@@ -136,12 +135,12 @@ const ClientDetail = () => {
             />
             {updateClientMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error saat menyimpan: {updateClientMutation.error?.message || "Unknown error"}
+                Error while saving: {updateClientMutation.error?.message || "Unknown error"}
               </div>
             )}
             {deleteClientMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error saat menghapus: {deleteClientMutation.error?.message || "Unknown error"}
+                Error while deleting: {deleteClientMutation.error?.message || "Unknown error"}
               </div>
             )}
           </>
