@@ -36,7 +36,7 @@ interface ErrorResponse {
   message: string;
 }
 
-const API_BASE_URL = 'http://localhost:3000/api'; // Sesuaikan dengan port backend
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'; // Default ke localhost jika tidak ada
 
 const Home = () => {
   const [projects, setProjects] = useState<Project[]>([]);
