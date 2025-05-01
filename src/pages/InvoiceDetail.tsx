@@ -29,18 +29,20 @@ const fetchClientList = async (token: string | null) => {
 // Update invoice
 const updateInvoice = async (id: string | undefined, data: InvoiceFormInput, token: string | null) => {
   const payload = {
-    project_id: data.projectId,
-    client_id: data.clientId,
-    amount: data.amount,
+    project_id: Number(data.projectId),
+    client_id: Number(data.clientId),
+    amount: Number(data.amount),
     payment_method: data.paymentMethod,
     payment_status: data.status,
     issue_date: data.issueDate
   };
   console.log('Payload update invoice:', payload);
   try {
-    return await axios.put(`/api/invoice/${id}`, payload, {
+    const response = await axios.put(`/api/invoice/${id}`, payload, {
       headers: { Authorization: `Bearer ${token}` }
     });
+    console.log('Update response:', response);
+    return response;
   } catch (err) {
     console.error('Error update invoice:', err instanceof Error ? err.message : err);
     throw err;
@@ -105,9 +107,9 @@ const InvoiceDetail = () => {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 flex items-center justify-center">
         <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-          <h3 className="text-lg font-medium mb-3">Confirm Delete</h3>
+          <h3 className="text-lg font-medium mb-3">Delete Confirmation</h3>
           <p className="text-gray-600 mb-4">
-            Are You Sure You Want To Delete This Invoice?.
+          Are you sure you want to delete this invoice? This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
             <button
@@ -141,8 +143,8 @@ const InvoiceDetail = () => {
   let defaultInputData: InvoiceFormInput | undefined = undefined;
   if (invoiceDetail && invoiceDetail.data) {
     defaultInputData = {
-      projectId: invoiceDetail.data.project?.id ||"",
-      clientId: invoiceDetail.data.client?.id ||"",
+      projectId: invoiceDetail.data.project?.id || 0,
+      clientId: invoiceDetail.data.client?.id || 0,
       amount: invoiceDetail.data.amount,
       paymentMethod: invoiceDetail.data.payment_method || "",
       status: invoiceDetail.data.payment_status || "",
@@ -161,10 +163,10 @@ const InvoiceDetail = () => {
         )}
         <DeleteConfirmationModal />
         {isError && (
-          <div className="text-red-500 mb-4">Error Loading Invoice, Try Again Later.</div>
+          <div className="text-red-500 mb-4">Error Loading Invoice. Try Again Later</div>
         )}
         {!isError && (!invoiceDetail || !invoiceDetail.data || !projectList || !clientList) && (
-          <div className="text-gray-500 text-center py-8">Data invoice, project, atau client tidak ditemukan atau masih dimuat.<br/>Silakan cek koneksi atau API.</div>
+          <div className="text-gray-500 text-center py-8">invoice, project, atau client tbou found.<br/>Please Check Your Connection.</div>
         )}
         {!isError && invoiceDetail && invoiceDetail.data && projectList && clientList && (
           <>
@@ -179,12 +181,12 @@ const InvoiceDetail = () => {
             />
             {updateInvoiceMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error Saving: {updateInvoiceMutation.error?.message || "Unknown error"}
+                Error While Updating: {updateInvoiceMutation.error?.message || "Unknown error"}
               </div>
             )}
             {deleteInvoiceMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error Deleting: {deleteInvoiceMutation.error?.message || "Unknown error"}
+                Error While Deleting: {deleteInvoiceMutation.error?.message || "Unknown error"}
               </div>
             )}
           </>
