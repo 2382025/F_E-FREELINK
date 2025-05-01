@@ -4,7 +4,7 @@ import axios from "../utils/AxiosInstance";
 import { useEffect } from "react";
 import { useAuth } from "../utils/AuthProvider";
 
-// Ganti nama fungsi dan endpoint-nya untuk menambahkan client
+
 const addClient = async (data: { client_name: string; email: string; phone_no: string; company: string }, token: string | null) => {
   if (!token) {
     throw new Error("No authentication token found");
@@ -24,7 +24,7 @@ const AddClient = () => {
 
   useEffect(() => {
     if (isSuccess) {
-      navigate("/clients", { replace: true }); // Navigasi ke halaman daftar client setelah berhasil
+      navigate("/clients", { replace: true });
     }
   }, [isSuccess, navigate]);
 
