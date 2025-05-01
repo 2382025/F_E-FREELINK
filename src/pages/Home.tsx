@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios, { AxiosError } from 'axios';
+import AxiosInstance from '../utils/AxiosInstance'; // Gunakan AxiosInstance yang sudah dibuat
+import { AxiosError } from 'axios';
 
 interface Project {
   id: number;
@@ -36,8 +37,6 @@ interface ErrorResponse {
   message: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'; // Default ke localhost jika tidak ada
-
 const Home = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -56,25 +55,18 @@ const Home = () => {
 
         const config = {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         };
 
         console.log('Fetching data with token:', token);
 
         const [projectsRes, invoicesRes, clientsRes] = await Promise.all([
-          axios.get<Project[]>(`${API_BASE_URL}/project`, config),
-          axios.get<Invoice[]>(`${API_BASE_URL}/invoice`, config),
-          axios.get<Client[]>(`${API_BASE_URL}/client`, config)
+          AxiosInstance.get<Project[]>('/project', config),
+          AxiosInstance.get<Invoice[]>('/invoice', config),
+          AxiosInstance.get<Client[]>('/client', config),
         ]);
-
-        // Debug log untuk melihat status proyek
-        console.log('Project statuses:', projectsRes.data.map(p => ({
-          id: p.id,
-          status: p.project_status,
-          statusUpperCase: p.project_status?.toUpperCase()
-        })));
 
         setProjects(projectsRes.data);
         setInvoices(invoicesRes.data);
@@ -83,10 +75,8 @@ const Home = () => {
       } catch (err) {
         console.error('Error fetching data:', err);
         const error = err as AxiosError<ErrorResponse>;
-        
+
         if (error.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
           console.error('Error response:', {
             data: error.response.data,
             status: error.response.status,
@@ -94,11 +84,9 @@ const Home = () => {
           });
           setError(`Error: ${error.response.data?.message || error.response.statusText}`);
         } else if (error.request) {
-          // The request was made but no response was received
           console.error('No response received:', error.request);
           setError('No response received from server. Please check if the backend is running.');
         } else {
-          // Something happened in setting up the request that triggered an Error
           console.error('Error setting up request:', error.message);
           setError(`Error: ${error.message}`);
         }
