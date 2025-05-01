@@ -5,18 +5,49 @@ import ProjectForm from "../components/ProjectForm";
 import axios from "../utils/AxiosInstance";
 import { useAuth } from "../utils/AuthProvider";
 
-
-
-export const fetchProjectDetail = async (id: string | undefined, token: string | null) => {
-  return await axios.get(`/api/project/${id}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+type ProjectType = {
+  project_name: string;
+  client_id: number;
+  due_date: string;
+  project_status: string;
 };
 
-const updateProject = async (id: string | undefined, data: any, token: string | null) => {
-  return await axios.put(`/api/project/${id}`, data, {
+export const fetchProjectDetail = async (id: string | undefined, token: string | null) => {
+  console.log('Fetching project detail for id:', id); // Debug log
+  const response = await axios.get(`/api/project/${id}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
+  console.log('Project detail response:', response.data); // Debug log
+  return response;
+};
+
+const updateProject = async (id: string | undefined, data: ProjectType, token: string | null) => {
+  // Ensure data has the correct format
+  const formattedData = {
+    ...data,
+    client_id: Number(data.client_id), // Ensure client_id is a number
+    due_date: data.due_date // Keep original date format
+  };
+
+  console.log('Updating project with data:', {
+    originalData: data,
+    formattedData,
+    client_id: formattedData.client_id,
+    client_id_type: typeof formattedData.client_id,
+    due_date: formattedData.due_date,
+    due_date_type: typeof formattedData.due_date
+  });
+
+  try {
+    const response = await axios.put(`/api/project/${id}`, formattedData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log('Update project response:', response.data);
+    return response;
+  } catch (error) {
+    console.error('Error updating project:', error);
+    throw error;
+  }
 };
 
 const deleteProject = async (id: string | undefined, token: string | null) => {
@@ -36,15 +67,22 @@ const ProjectDetail = () => {
   const { data: projectDetail, isLoading, isError } = useQuery({
     queryKey: ["projectDetail", id],
     queryFn: () => fetchProjectDetail(id, getToken()),
-    refetchOnWindowFocus: false,
-    refetchInterval: false
+    refetchOnWindowFocus: true, // Enable refetch on window focus
+    refetchInterval: false,
+    staleTime: 0 // Always consider data stale
   });
 
   const updateProjectMutation = useMutation({
-    mutationFn: (data: any) => updateProject(id, data, getToken()),
+    mutationFn: (data: ProjectType) => updateProject(id, data, getToken()),
     onSuccess: () => {
+      console.log('Project updated successfully'); // Debug log
       queryClient.invalidateQueries({ queryKey: ["projectList"] });
+      queryClient.invalidateQueries({ queryKey: ["projectDetail", id] });
+      queryClient.invalidateQueries({ queryKey: ["clientList"] });
       navigate("/projects", { replace: true });
+    },
+    onError: (error) => {
+      console.error('Error updating project:', error); // Debug log
     }
   });
 
@@ -61,16 +99,16 @@ const ProjectDetail = () => {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 flex items-center justify-center">
         <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-          <h3 className="text-lg font-medium mb-3">Konfirmasi Hapus</h3>
+          <h3 className="text-lg font-medium mb-3">Delete Confirmation</h3>
           <p className="text-gray-600 mb-4">
-            Apakah Anda yakin ingin menghapus project ini? Tindakan ini tidak dapat dibatalkan.
+            Are you sure you want to delete this project? This action cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setIsDeleteModalOpen(false)}
               className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800"
             >
-              Batal
+              Cancel
             </button>
             <button
               onClick={() => {
@@ -79,7 +117,7 @@ const ProjectDetail = () => {
               }}
               className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
             >
-              Hapus
+              Delete
             </button>
           </div>
         </div>
@@ -104,10 +142,10 @@ const ProjectDetail = () => {
         )}
         <DeleteConfirmationModal />
         {isError && (
-          <div className="text-red-500 mb-4">Error loading project.</div>
+          <div className="text-red-500 mb-4">Failed to load project. Please try again.</div>
         )}
         {!isError && (!projectDetail || !projectDetail.data) && (
-          <div className="text-gray-500 text-center py-8">Project Data not Found.<br/>Please check your connection.</div>
+          <div className="text-gray-500 text-center py-8">Project data not found or still loading.<br/>Please check your connection or API.</div>
         )}
         {!isError && projectDetail && projectDetail.data && (
           <>
@@ -127,12 +165,12 @@ const ProjectDetail = () => {
             </div>
             {updateProjectMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error While Saving: {updateProjectMutation.error?.message || "Unknown error"}
+                Error while saving: {updateProjectMutation.error?.message || "Unknown error"}
               </div>
             )}
             {deleteProjectMutation.isError && (
               <div className="text-red-500 mt-4">
-                Error While Deleting: {deleteProjectMutation.error?.message || "Unknown error"}
+                Error while deleting: {deleteProjectMutation.error?.message || "Unknown error"}
               </div>
             )}
           </>
