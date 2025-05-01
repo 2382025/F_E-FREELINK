@@ -30,8 +30,8 @@ const addProject = async (token: string | null, project: NewProjectType) => {
 
 interface ProjectFormProps {
   isEdit?: boolean;
-  mutateFn?: (data: any) => void;
-  defaultInputData?: any;
+  mutateFn?: (data: NewProjectType) => void;
+  defaultInputData?: NewProjectType;
   showDeleteButton?: boolean;
   onDelete?: () => void;
 }
@@ -48,7 +48,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   const queryClient = useQueryClient();
 
   const [projectName, setProjectName] = useState("");
-  const [clientId, setClientId] = useState<number | "">("");
+  const [clientId, setClientId] = useState<number | null>(null);
   const [dueDate, setDueDate] = useState("");
   const [projectStatus, setProjectStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +56,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
   const { data: clientData } = useQuery({
     queryKey: ["clientList"],
-    queryFn: () => fetchClientList(getToken())
+    queryFn: () => fetchClientList(getToken()),
+    staleTime: 1000 * 60 * 5 // 5 minutes
   });
 
   const addProjectMutation = useMutation({
@@ -79,10 +80,38 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   ];
 
   useEffect(() => {
+    console.log('State updated:', {
+      projectName,
+      clientId,
+      dueDate,
+      projectStatus
+    });
+  }, [projectName, clientId, dueDate, projectStatus]);
+
+  useEffect(() => {
     if (isEdit && defaultInputData) {
+      console.log('Setting default data:', {
+        defaultInputData,
+        client_id: defaultInputData.client_id,
+        due_date: defaultInputData.due_date
+      });
+      
       setProjectName(defaultInputData.project_name || "");
-      setClientId(defaultInputData.client?.id || "");
-      setDueDate(defaultInputData.due_date ? defaultInputData.due_date.slice(0, 10) : "");
+      setClientId(defaultInputData.client_id ? Number(defaultInputData.client_id) : null);
+      
+      // Format tanggal ke format yang benar
+      if (defaultInputData.due_date) {
+        const date = new Date(defaultInputData.due_date);
+        const formattedDueDate = date.toISOString().split('T')[0];
+        console.log('Due date conversion:', {
+          original: defaultInputData.due_date,
+          formatted: formattedDueDate
+        });
+        setDueDate(formattedDueDate);
+      } else {
+        setDueDate("");
+      }
+      
       setProjectStatus(defaultInputData.project_status || "");
     }
   }, [isEdit, defaultInputData]);
@@ -91,11 +120,12 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     e.preventDefault();
     setFormError(null);
 
+    // Validasi form
     if (!projectName.trim()) {
       setFormError("Project name is required");
       return;
     }
-    if (clientId === "") {
+    if (clientId === null) {
       setFormError("Client is required");
       return;
     }
@@ -104,23 +134,30 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       return;
     }
     if (!projectStatus) {
-      setFormError("Status is required");
+      setFormError("Project status is required");
       return;
     }
 
-    setIsSubmitting(true);
-
-    const newProject: NewProjectType = {
+    const projectData: NewProjectType = {
       project_name: projectName,
-      client_id: clientId as number,
+      client_id: Number(clientId),
       due_date: dueDate,
       project_status: projectStatus
     };
 
+    console.log('Submitting form data:', {
+      projectData,
+      clientId,
+      dueDate,
+      isEdit,
+      hasMutateFn: !!mutateFn
+    });
+
     if (isEdit && mutateFn) {
-      mutateFn(newProject);
+      mutateFn(projectData);
     } else {
-      addProjectMutation.mutate(newProject);
+      setIsSubmitting(true);
+      addProjectMutation.mutate(projectData);
     }
   };
 
@@ -158,8 +195,16 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               Client
             </label>
             <select
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value ? parseInt(e.target.value) : "")}
+              value={clientId || ""}
+              onChange={(e) => {
+                const newClientId = e.target.value ? parseInt(e.target.value) : null;
+                console.log('Client changed:', {
+                  oldValue: clientId,
+                  newValue: e.target.value,
+                  parsedValue: newClientId
+                });
+                setClientId(newClientId);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Client</option>
@@ -179,7 +224,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             <input
               type="date"
               value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              onChange={(e) => {
+                const newDueDate = e.target.value;
+                console.log('Due date changed:', {
+                  oldValue: dueDate,
+                  newValue: newDueDate
+                });
+                setDueDate(newDueDate);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
