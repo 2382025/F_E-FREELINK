@@ -1,12 +1,12 @@
 import { UseMutateFunction } from "@tanstack/react-query";
 import React, { useEffect } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm, useWatch } from "react-hook-form";
 
 interface InvoiceFormProps {
   isEdit: boolean;
   mutateFn: UseMutateFunction<any, Error, InvoiceFormInput, unknown>;
   defaultInputData?: InvoiceFormInput;
-  projectOptions: { id: number; project_name: string }[];
+  projectOptions: { id: number; project_name: string; client_id: number }[];
   clientOptions: { id: number; client_name: string }[];
   showDeleteButton?: boolean;
   onDelete?: () => void;
@@ -30,32 +30,87 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
   mutateFn,
   defaultInputData
 }) => {
+  console.log('Project Options:', projectOptions);
+  console.log('Client Options:', clientOptions);
+
   const {
     register,
     handleSubmit,
     setValue,
+    control,
     formState: { errors }
   } = useForm<InvoiceFormInput>();
 
+  // Watch projectId changes
+  const selectedProjectId = useWatch({
+    control,
+    name: "projectId"
+  });
+
+  console.log('Selected Project ID:', selectedProjectId);
+
+  // Get selected project's client_id
+  const selectedProject = projectOptions.find(p => p.id === Number(selectedProjectId));
+  console.log('Selected Project:', selectedProject);
+
+  const selectedClientId = selectedProject?.client_id;
+  console.log('Selected Client ID:', selectedClientId);
+
+  // Set clientId automatically when project changes
+  useEffect(() => {
+    console.log('useEffect triggered with selectedClientId:', selectedClientId);
+    if (selectedClientId) {
+      console.log('Mengatur client_id otomatis:', selectedClientId);
+      setValue("clientId", selectedClientId);
+    }
+  }, [selectedClientId, setValue]);
+
   useEffect(() => {
     if (defaultInputData) {
+      console.log('Setting default data:', defaultInputData);
       setValue("projectId", defaultInputData.projectId);
       setValue("clientId", defaultInputData.clientId);
       setValue("amount", defaultInputData.amount);
       setValue("paymentMethod", defaultInputData.paymentMethod);
       setValue("status", defaultInputData.status);
-      setValue("issueDate", defaultInputData.issueDate);
+      
+      // Format tanggal ke format yang benar
+      if (defaultInputData.issueDate) {
+        const date = new Date(defaultInputData.issueDate);
+        const formattedIssueDate = date.toISOString().split('T')[0];
+        console.log('Issue date conversion:', {
+          original: defaultInputData.issueDate,
+          formatted: formattedIssueDate
+        });
+        setValue("issueDate", formattedIssueDate);
+      } else {
+        setValue("issueDate", "");
+      }
     }
   }, [defaultInputData, setValue]);
 
   const onSubmit: SubmitHandler<InvoiceFormInput> = (data) => {
+    console.log('Form submitted with data:', data);
     if (isEdit) {
       if (!confirm("Are you sure you want to update the invoice?")) {
         return;
       }
     }
-    mutateFn(data);
+    
+    const processedData = {
+      ...data,
+      amount: Number(data.amount),
+      projectId: Number(data.projectId),
+      clientId: Number(data.clientId),
+      issueDate: data.issueDate
+    };
+    console.log('Processed data:', processedData);
+    mutateFn(processedData);
   };
+
+
+  const selectedClient = clientOptions.find(c => c.id === selectedClientId);
+  console.log('Selected Client:', selectedClient);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -63,7 +118,13 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
       <div>
         <label className="block text-gray-700 font-bold mb-2">Project</label>
         <select
-          {...register("projectId", { required: true, valueAsNumber: true })}
+          {...register("projectId", { 
+            required: true, 
+            valueAsNumber: true,
+            onChange: (e) => {
+              console.log('Project dropdown changed:', e.target.value);
+            }
+          })}
           className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.projectId && "border-red-500"}`}
         >
           <option value="">Select a project</option>
@@ -78,36 +139,41 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({
         )}
       </div>
 
-      {/* Client Dropdown */}
+      {/* Client Display (Read-only) */}
       <div>
         <label className="block text-gray-700 font-bold mb-2">Client</label>
-        <select
+        <input
+          type="text"
+          readOnly
+          value={selectedClient?.client_name || ""}
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-100 leading-tight focus:outline-none focus:shadow-outline"
+        />
+        <input
+          type="hidden"
           {...register("clientId", { required: true, valueAsNumber: true })}
-          className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.clientId && "border-red-500"}`}
-        >
-          <option value="">Select a client</option>
-          {clientOptions.map((client) => (
-            <option key={client.id} value={client.id}>
-              {client.client_name}
-            </option>
-          ))}
-        </select>
-        {errors.clientId && (
-          <p className="text-red-600 text-xs italic">Client is required.</p>
-        )}
+        />
       </div>
 
       {/* Amount */}
       <div>
-        <label className="block text-gray-700 font-bold mb-2">Amount ($)</label>
+        <label className="block text-gray-700 font-bold mb-2">Amount</label>
         <input
           type="number"
-          {...register("amount", { required: true, min: 0 })}
+          step="0.01"
+          min="0"
+          {...register("amount", { 
+            required: true, 
+            valueAsNumber: true,
+            validate: (value) => value > 0 || "Amount must be greater than 0"
+          })}
           className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${errors.amount && "border-red-500"}`}
-          placeholder="Enter amount"
         />
         {errors.amount && (
-          <p className="text-red-600 text-xs italic">Amount is required.</p>
+          <p className="text-red-600 text-xs italic">
+            {errors.amount.type === "validate" 
+              ? "Amount must be greater than 0" 
+              : "Amount is required"}
+          </p>
         )}
       </div>
 
